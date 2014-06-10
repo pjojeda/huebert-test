@@ -41,17 +41,18 @@ public class LibraryService {
 	@Produces(value = MediaType.APPLICATION_JSON)
 	public Response getBooks(@QueryParam(value="version")int version){
 		try{
-			Preferences prefs = Preferences.userRoot().node(this.getClass().getName());
-			int currentVersion = Integer.parseInt(prefs.get("currentVersion", "0"));
 			String path = servletContext.getRealPath("/");
 			path = path + "WEB-INF/json/";
+			String ls = System.getProperty("line.separator");
+			String value = LibraryServiceImpl.readFile(path + "/version.txt").replace(ls, "");
+			int currentVersion = Integer.valueOf(value);
 			String finalVersion = "{Books: [ ], CategoryOrder: [ ], Server: { updated: \"2014-05-29\", version: "
 									+currentVersion +"}}";
-			if(version != currentVersion){
+			if(version < currentVersion){
 				version++;
 				String minLib = libraryServiceImpl.getBooks(path + version + ".txt");
 				LibraryDto finalLibrary = LibraryParser.config(minLib);
-				String json = "";
+				String json = minLib;
 				for(int v = version + 1; v <=currentVersion; v++){
 					json = libraryServiceImpl.getBooks(path + v + ".txt");
 					LibraryDto lib = LibraryParser.config(json);
@@ -60,6 +61,7 @@ public class LibraryService {
 							finalLibrary.getBooks().remove(book);
 							finalLibrary.getBooks().add(book);
 						}
+						finalLibrary.setVersion(lib.getVersion());
 					}
 				}
 				finalLibrary.setCategoriesSorted(LibraryParser.getCategoriesSorted(json));
@@ -81,9 +83,9 @@ public class LibraryService {
 	 
 		String path = servletContext.getRealPath("/");
 		path = path + "WEB-INF/json/";
-		Preferences prefs = Preferences.userRoot().node(this.getClass().getName());
+		
 		String currentVersion = fileDisposition.getFileName().substring(0, fileDisposition.getFileName().length()-4);
-		prefs.put("currentVersion", currentVersion);
+		LibraryServiceImpl.writeText(path + "/version.txt", currentVersion);
 		String uploadedFileLocation = path + fileDisposition.getFileName();
 		 
 		try{
